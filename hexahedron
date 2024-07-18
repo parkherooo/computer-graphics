@@ -1,0 +1,274 @@
+#include <gl/glut.h>
+#include <gl/gl.h>
+#include <stdio.h>
+#include <math.h>
+
+#define	PI	3.1415926
+
+GLfloat		vertices[][3] = {
+{ -1.0, -1.0,  1.0 },		// 0
+{ -1.0,  1.0,  1.0 },		// 1
+{ 1.0,  1.0,  1.0 },		// 2
+{ 1.0, -1.0,  1.0 },		// 3
+{ -1.0, -1.0, -1.0 },		// 4
+{ -1.0,  1.0, -1.0 },		// 5
+{ 1.0,  1.0, -1.0 },		// 6
+{ 1.0, -1.0, -1.0 },		// 7
+};
+
+GLfloat		colors[][3] = {
+{ 1.0, 0.0, 0.0 },			// red
+{ 0.0, 1.0, 0.0 },			// green 
+{ 1.0, 1.0, 0.0 },			// yellow
+{ 1.0, 1.0, 1.0 },			// white
+{ 0.0, 0.0, 1.0 },			// blue
+{ 1.0, 0.0, 1.0 }			// magenta
+};
+
+
+int		view_type = 0;
+float	c_distance, c_theta, c_phi;
+float	up = 1.0;
+float	angle = 0.0;
+float	aa = 0.0;
+bool	isCubeFolded = true;
+
+void polygon(int a, int b, int c, int d) {
+    glColor3fv(colors[a]);
+    glBegin(GL_POLYGON);
+    glVertex3fv(vertices[a]); // v:인자를 벡터타입으로 받아들임
+    glVertex3fv(vertices[b]);
+    glVertex3fv(vertices[c]);
+    glVertex3fv(vertices[d]);
+    glEnd();
+}
+
+void cube(void) {
+    if (isCubeFolded){
+    // polygon(3, 0, 4, 7); // 면 그리기 / vertex(3), 꼭짓점(0, 4, 7)
+    // 흰색면
+    glPushMatrix();
+    glTranslatef(0.0, -1.0, -1.0);
+    glRotatef(angle, 1.0, 0.0, 0.0);
+    glTranslatef(0.0, 1.0, 1.0);
+    polygon(3, 0, 4, 7);
+    glPopMatrix();
+
+    // 초록면
+    glPushMatrix();
+    glTranslatef(0.0, 1.0, -1.0);
+    glRotatef(-angle, 1.0, 0.0, 0.0);
+    glTranslatef(0.0, -1.0, 1.0);
+    polygon(1, 2, 6, 5);
+    glPopMatrix();
+
+    // 파랑면
+    polygon(4, 5, 6, 7);
+
+    // 핑크면
+    glPushMatrix();
+    glTranslatef(-1.0, 0.0, -1.0);
+    glRotatef(-angle, 0.0, 1.0, 0.0);
+    glTranslatef(1.0, 0.0, 1.0);
+    polygon(5, 4, 0, 1);
+    glPopMatrix();
+
+    // 노랑면
+    glPushMatrix();
+    glTranslatef(1.0, 0.0, -1.0);
+    glRotatef(angle, 0.0, 1.0, 0.0);
+    glTranslatef(-1.0, 0.0, 1.0);
+    polygon(2, 3, 7, 6);
+    glPopMatrix();
+
+    // 빨간면
+    glPushMatrix();
+    glTranslated(0.0, 0.0, aa);
+    polygon(0, 3, 2, 1);
+    glPopMatrix();
+   
+    }
+    else {
+        // polygon(3, 0, 4, 7); // 면 그리기 / vertex(3), 꼭짓점(0, 4, 7)
+    // 흰색면
+        glPushMatrix();
+        glTranslatef(0.0, -1.0, -1.0);
+        glRotatef(angle, 1.0, 0.0, 0.0);
+        glTranslatef(0.0, 1.0, 1.0);
+        polygon(3, 0, 4, 7);
+        glPopMatrix();
+
+        // 초록면
+        glPushMatrix();
+        glTranslatef(0.0, 1.0, -1.0);
+        glRotatef(-angle, 1.0, 0.0, 0.0);
+        glTranslatef(0.0, -1.0, 1.0);
+        polygon(1, 2, 6, 5);
+        glPopMatrix();
+
+        // 파랑면
+        polygon(4, 5, 6, 7);
+
+        // 핑크면
+        glPushMatrix();
+        glTranslatef(-1.0, 0.0, -1.0);
+        glRotatef(-angle, 0.0, 1.0, 0.0);
+        glTranslatef(1.0, 0.0, 1.0);
+        polygon(5, 4, 0, 1);
+        glPopMatrix();
+
+        // 노랑면
+        glPushMatrix();
+        glTranslatef(1.0, 0.0, -1.0);
+        glRotatef(angle, 0.0, 1.0, 0.0);
+        glTranslatef(-1.0, 0.0, 1.0);
+        polygon(2, 3, 7, 6);
+        glPopMatrix();
+
+        // 빨간면
+        glPushMatrix();
+        glTranslated(0.0, 0.0, aa);
+        polygon(0, 3, 2, 1);
+        glPopMatrix();
+        aa += 0.0001;
+        if (angle < 90) {
+            angle += 0.001;
+        }
+    }
+    
+   
+    
+}
+
+void init(void)
+{
+
+    c_distance = 7.0;
+    c_theta = 0.3;
+    c_phi = 0.4;
+
+    glEnable(GL_DEPTH_TEST); // 거리 개념
+    //glEnable(GL_CULL_FACE);
+
+}
+
+void reshape(int w, int h)
+{
+    glViewport(0, 0, w, h);
+
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    //glOrtho(-5.0, 5.0, -5.0, 5.0, -5.0, 15.0);
+    gluPerspective(45.0, 1.0, 1.0, 20.0); // 45:y축의 화각(얼마나 멀리보는지), 관심영역(1~20)
+}
+
+void axis(void) {
+
+    glBegin(GL_LINES);
+    // x축 - 빨간색
+    glColor3f(1.0, 0.0, 0.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(10.0, 0.0, 0.0);
+    // y축 - 초록색
+    glColor3f(0.0, 1.0, 0.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(0.0, 10.0, 0.0);
+    // z축 - 파란색
+    glColor3f(0.0, 0.0, 1.0);
+    glVertex3f(0.0, 0.0, 0.0);
+    glVertex3f(0.0, 0.0, 10.0);
+    glEnd();
+}
+
+void frame_reset(void) {
+    glClearColor(0.6, 0.6, 0.6, 0.0);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+}
+
+void camera(void) {
+    float	x, y, z;
+    x = c_distance * cos(c_theta) * cos(c_phi);
+    y = c_distance * sin(c_theta) * cos(c_phi);
+    z = c_distance * sin(c_phi);
+
+    glMatrixMode(GL_MODELVIEW);
+    glLoadIdentity();
+    gluLookAt(x, y, z, 0.0, 0.0, 0.0, 0.0, 0.0, up); // 카메라의 위치(x, y, z), 응시점(0, 0, 0)
+
+}
+
+
+void display(void)
+{
+    frame_reset();
+
+    camera();
+    axis();
+    cube();
+
+
+    glFlush();
+    glutSwapBuffers();
+}
+
+void MyKey(unsigned char key, int x, int y) {
+    switch (key) {
+    case 't':
+    case 'T':
+        isCubeFolded = !isCubeFolded; // 상태를 토글
+        break;
+    case 'a':
+        glFrontFace(GL_CCW);
+        break;
+    case 's':
+        glFrontFace(GL_CW);
+        break;
+    default:
+        break;
+    }
+    glutPostRedisplay();
+}
+
+void Special(int key, int x, int y) {
+    switch (key) {
+    case GLUT_KEY_LEFT:			c_theta -= 0.01;	break;
+    case GLUT_KEY_RIGHT:		c_theta += 0.01;	break;
+    case GLUT_KEY_DOWN:         c_phi -= 0.01;		break;
+    case GLUT_KEY_UP:			c_phi += 0.01;		break;
+
+    default:	break;
+    }
+
+    if (c_phi > 3.0 * PI / 2.0)
+        c_phi -= 2.0 * PI;
+    else if (c_phi < -3.0 * PI / 2.0)
+        c_phi += 2.0 * PI;
+
+    if (c_phi > PI / 2.0)
+        up = -1.0;
+    else if (c_phi < -1.0 * PI / 2.0)
+        up = -1.0;
+    else
+        up = 1.0;
+
+    glutPostRedisplay();
+
+
+}
+
+int main(int argc, char** argv)
+{
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGB | GLUT_DEPTH);
+    glutInitWindowPosition(100, 100);
+    glutInitWindowSize(500, 500);
+    glutCreateWindow("Magic_Cube");
+    init();
+    glutDisplayFunc(display);
+    glutReshapeFunc(reshape);
+    glutKeyboardFunc(MyKey);
+    glutSpecialFunc(Special);
+    glutIdleFunc(display);
+    glutMainLoop();
+    return 0;
+}
