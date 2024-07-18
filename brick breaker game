@@ -1,0 +1,571 @@
+#include <windows.h>
+#include <gl/gl.h>
+#include <gl/glut.h>
+#include <math.h>
+#include <ctime>
+#include<string.h>
+#include<iostream>
+
+#define width          800  // 윈도우 창의 폭
+#define height         600  // 윈도우 창의 높이
+#define PI            3.1415
+#define polygon_num      50
+bool startClicked = false;
+int left = 0;
+int bottom = 0;
+int collision_count = 0;
+int scorenum = 0;//game 스코어 넘버 
+float ball_radius;
+int bar_x = width / 2; // 바의 처음 x좌표
+int bar_length = 140;
+float barleftX, barrightX;
+float bartopY, barbottomY;
+float barmove = 0.0;
+float barmove2 = 0.0;
+float barmovement_x = 35.0;
+float barmovement_y = 35.0;
+int blocknum=1;
+int   mode = 0;
+int game = 0;
+
+struct Point {
+    float	x;
+    float	y;
+    int draw;
+    int hitCount=0;
+
+};
+
+Point moving_ball, velocity, moving_ball2, velocity2, bar;
+Point block[3][10];
+
+void init(void){
+    int x = 140;
+    int y = 490;
+    int i = 0;
+
+    for (int j = 0; j < 8; j++) {
+        block[i][j].x = x;
+        block[i][j].y = y;
+        x += 66;
+    }
+
+    int a = 460;
+    x = 140;
+    i++;
+
+    for (int j = 0; j < 8; j++) {
+        block[i][j].x = x;
+        block[i][j].y = a;
+        x += 66;
+    }
+
+    int b = 430;
+    x = 140;
+    i++;
+
+    for (int j = 0; j < 8; j++) {
+        block[i][j].x = x;
+        block[i][j].y = b;
+        x +=66;
+    }
+
+    ball_radius = 10.0;
+    moving_ball.x = width / 2;
+    moving_ball.y = height / 4;
+    
+    moving_ball2.x = width / 2;
+    moving_ball2.y = height / 4;
+
+    velocity.x = 0.1; // 공 속도
+    velocity.y = 0.1;
+
+    velocity2.x = -0.08; // 공 속도
+    velocity2.y = 0.05;
+
+    collision_count = 1;
+}
+
+// 공 만드는 함수
+void Draw_circle(float radius, Point CC) {
+    float delta = 2 * PI / polygon_num;
+    glColor3f(0.4f, 0.69f, 1.0f);
+    glBegin(GL_POLYGON);
+
+    for (int i = 0; i < polygon_num; i++) {
+        glVertex2f(CC.x + radius * cos(delta * i), CC.y + radius * sin(delta * i));
+    }
+    glEnd();
+}
+void Draw_circle2(float radius, Point BB) {
+    float delta = 2 * PI / polygon_num;
+    glColor3f(0.4f, 0.69f, 0.0f);
+    glBegin(GL_POLYGON);
+    for (int i = 0; i < polygon_num; i++) {
+        glVertex2f(BB.x + radius * cos(delta * i), BB.y + radius * sin(delta * i));
+    }
+    glEnd();
+}
+
+// 바 만드는 함수
+void Draw_bar() {
+    if (mode == 1) {
+        barleftX = moving_ball.x - (bar_length / 2);
+        barrightX = moving_ball.x + (bar_length / 2);
+        bartopY = 20;
+        barbottomY = 10;
+        barleftX += barmove;
+        barrightX += barmove;
+        bartopY += barmove2;
+        barbottomY += barmove2;
+        glColor3f(0.0, 0.0, 0.6);
+        glBegin(GL_POLYGON);
+        glVertex2f(barleftX, barbottomY);
+        glVertex2f(barleftX, bartopY);
+        glVertex2f(barrightX, bartopY);
+        glVertex2f(barrightX, barbottomY);
+        glEnd();
+    }
+    else {
+        barleftX = bar_x - (bar_length / 2);
+        barrightX = bar_x + (bar_length / 2);
+        bartopY = 20;
+        barbottomY = 10;
+        barleftX += barmove;
+        barrightX += barmove;
+        bartopY += barmove2;
+        barbottomY += barmove2;
+        glColor3f(0.0, 0.0, 0.6);
+        glBegin(GL_POLYGON);
+        glVertex2f(barleftX, barbottomY);
+        glVertex2f(barleftX, bartopY);
+        glVertex2f(barrightX, bartopY);
+        glVertex2f(barrightX, barbottomY);
+        glEnd();
+    }
+}
+
+// 벽돌 만드는 함수
+void Draw_block() {
+    for (int i = 0; i < 3; i++) {
+        for (int j = 0; j < 8; j++) {
+            glBegin(GL_QUADS);
+            glColor3f(0.3,0.3, 0.3);
+            glVertex2f(block[i][j].x, block[i][j].y); //좌상단
+            glVertex2f(block[i][j].x + 60, block[i][j].y); // 우상단
+            glVertex2f(block[i][j].x + 60, block[i][j].y - 25);//우하단
+            glVertex2f(block[i][j].x, block[i][j].y - 25);//좌하단
+            glEnd();
+        }
+    }
+    glFinish();
+}
+
+// 문자열 삽입하는 함수
+void drawBitmapText(const char* str, float x, float y, float z, float r, float g, float b) {
+    glColor3f(0.0f, 0.0f, 0.0f);
+    glRasterPos3f(x, y, z); // 문자열이 그려질 위치 지정
+    while (*str) {
+        glutBitmapCharacter(GLUT_BITMAP_TIMES_ROMAN_24, *str);
+        str++;
+    }
+}
+// 게임이 끝났을 때의 페이지 함수
+void Game_over_page() {
+    char blocktxt[100];
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    drawBitmapText("! Game Over !", width / 2 - 120, height / 2, 0, 1.0, 1.0, 0.0);
+    glColor3f(1.0, 1.0, 1.0);
+    strcpy_s(blocktxt, "HOME");
+    glBegin(GL_POLYGON);
+    glVertex2f(650, 100);
+    glVertex2f(750, 100); //b
+    glVertex2f(750, 50); //c
+    glVertex2f(650, 50);//d
+    glEnd();
+    glColor3f(0.3, 0.4, 0.5);
+
+    float posX = (1400) / 2.0 - 9 * strlen(blocktxt) + 10;
+    float posY = 70;
+    glRasterPos2f(posX, posY);
+    for (int i = 0; i < strlen(blocktxt); i++) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, blocktxt[i]);
+    }
+}
+
+// 게임이 끝났을 때의 함수
+void Game_over() {
+    glClearColor(0.529, 0.808, 0.922, 1.0);
+    glClear(GL_COLOR_BUFFER_BIT);
+    Game_over_page();
+}
+
+// 게임 클리어 했을 때의 페이지 함수
+void Game_clear_page() {
+    barleftX = bar_x - (bar_length / 2);
+    barrightX = bar_x + (bar_length / 2);
+    char blocktxt[100];
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    drawBitmapText("! Game Clear !", width / 2 - 120, height / 2, 0, 1.0, 1.0, 0.0);
+    glColor3f(1.0, 1.0, 1.0);
+    strcpy_s(blocktxt, "HOME");
+    glBegin(GL_POLYGON);
+    glVertex2f(650, 100);
+    glVertex2f(750, 100); //b
+    glVertex2f(750, 50); //c
+    glVertex2f(650, 50);//d
+    glEnd();
+    glColor3f(0.3, 0.4, 0.5);
+
+    float posX = (1400) / 2.0 - 9 * strlen(blocktxt) + 10;
+    float posY = 70;
+    glRasterPos2f(posX, posY);
+    for (int i = 0; i < strlen(blocktxt); i++) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, blocktxt[i]);
+    }
+}
+void Game_start_page() {
+    barleftX = bar_x - (bar_length / 2);
+    barrightX = bar_x + (bar_length / 2);
+    char blocktxt[100];
+    for (int i = 1; i < 4; i++) {
+        if (i == 1) {
+            glColor3f(1.0, 0.5, 0.5);
+            strcpy_s(blocktxt, "EASY");
+        }
+        else if (i == 2) {
+            glColor3f(0.5, 1.0, 0.5);
+            strcpy_s(blocktxt, "NOMAL");
+        }
+        else{
+            glColor3f(0.5, 0.5, 1.0);
+            strcpy_s(blocktxt, "HARD");
+        }
+        glBegin(GL_POLYGON);
+        glVertex2f(i * 140+(20*i), 400);
+        glVertex2f(i * 140 +(20 * i) + 140, 400); //b
+        glVertex2f(i * 140 + (20 * i) + 140, 300); //c
+        glVertex2f(i * 140+ (20 * i), 300);//d
+        glEnd();
+        glColor3f(0.3, 0.4, 0.5); 
+        
+        float posX = (i * 140 + (20 * i) + i * 140 + (20 * i) + 140) / 2.0 - 9 * strlen(blocktxt)+10;
+        float posY = 345;
+        glRasterPos2f(posX, posY);
+        for (int i = 0; i < strlen(blocktxt); i++) {
+            glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, blocktxt[i]);
+        }
+    }
+}
+
+void mouseClick(int button, int state, int x, int y) {
+    if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN) {
+        // 마우스 왼쪽 버튼이 눌렸을 때의 처리
+        // 클릭한 좌표(x, y)를 기반으로 START 버튼을 클릭한지 판단
+        
+        if (x >= 160 && x <= 300 && y >= 300 - 100 && y <= 300) {
+            game = 1;
+            mode = 1;
+            startClicked = true; // START 버튼이 클릭되었음을 플래그로 표시
+        }
+        else if (x >= 340 && x <= 460 && y >= 300 - 100 && y <= 300) {
+            game = 1;
+            mode = 2;
+            startClicked = true;
+        }
+        else if (x >= 480 && x <= 620 && y >= 300 - 100 && y <= 300) {
+            game = 1;
+            mode = 3;
+            startClicked = true;
+        }
+        else if (x >= 650 && x <= 750 && y >= 500 && y <= 550) {
+            game = -1;
+            mode = -1;
+            scorenum = 0;
+            init();
+            startClicked = true;
+        }
+        
+    }
+}
+// 공과 벽의 충돌 체크
+void Check_Collision_Ball_Wall(void) {
+    float hexagon_radius = 360;
+    float hexagon_center_x = width / 2;
+    float hexagon_center_y = height / 2;
+    float distance = sqrt(pow(moving_ball.x - hexagon_center_x, 2) + pow(moving_ball.y - hexagon_center_y, 2));
+   
+    if (distance > hexagon_radius) {
+        // 충돌이 발생한 경우, 벽과의 충돌이므로 이동 방향을 반대로 변경
+        float angle = atan2(moving_ball.y - hexagon_center_y, moving_ball.x - hexagon_center_x);
+        if (moving_ball.y - ball_radius <= bottom) {
+            Game_over();
+        }
+        else if (velocity.y <0){
+            velocity.x = -velocity.x;
+        }
+        else {
+            velocity.x = -velocity.x;
+            velocity.y = -velocity.y;
+        }
+    }
+    if (left + height <= moving_ball.y + ball_radius) {
+        velocity.y *= (-1.0);
+    }
+    if (mode == 3) {
+        float distance2 = sqrt(pow(moving_ball2.x - hexagon_center_x, 2) + pow(moving_ball2.y - hexagon_center_y, 2));
+        if (distance2 > hexagon_radius) {
+            if (moving_ball2.y - ball_radius <= bottom) {
+                Game_over();
+            }
+            else if (velocity2.y < 0) {
+                velocity2.x = -velocity2.x;
+            }
+            else {
+                velocity2.x = -velocity2.x;
+                velocity2.y = -velocity2.y;
+            }
+        }
+        if (left + height <= moving_ball2.y + ball_radius) {
+            velocity2.y *= (-1.0);
+        }
+    }
+}
+
+// 공과 바의 충돌 체크
+void Check_Collision_Ball_Bar() {
+    if (moving_ball.x >= barleftX && moving_ball.x <= barrightX && (moving_ball.y - ball_radius < bartopY && moving_ball.y - ball_radius > barbottomY)) {
+        velocity.y *= (-1.0);
+    }
+    else if (moving_ball2.x >= barleftX && moving_ball2.x <= barrightX && (moving_ball2.y - ball_radius < bartopY && moving_ball2.y - ball_radius > barbottomY)) {
+        velocity2.y *= (-1.0);
+    }
+}
+
+// 공과 벽돌의 충돌 체크
+void Check_Collision_Ball_Block(int i, int j) {
+    if (velocity.x > 0 && moving_ball.y <= block[i][j].y && moving_ball.y >= block[i][j].y - 27 && moving_ball.x + ball_radius >= block[i][j].x && moving_ball.x < block[i][j].x) {
+        velocity.y *= -1;
+        if (mode == 3) {
+            block[i][j].hitCount++;
+            if (block[i][j].hitCount == 2) {
+                block[i][j].x = -100.0;
+                block[i][j].y = -100.0;
+                scorenum++;
+            }
+        }
+        else {
+            block[i][j].x = -100.0;
+            block[i][j].y = -100.0;
+            scorenum++;
+        }
+        
+    }
+    else if (velocity.x < 0 && moving_ball.y <= block[i][j].y && moving_ball.y >= block[i][j].y - 27 && moving_ball.x - ball_radius <= block[i][j].x + 75 && moving_ball.x > block[i][j].x) {
+        velocity.y *= -1;
+        if (mode == 3) {
+            block[i][j].hitCount++;
+            if (block[i][j].hitCount == 2) {
+                block[i][j].x = -100.0;
+                block[i][j].y = -100.0;
+                scorenum++;
+            }
+        }
+        else {
+            block[i][j].x = -100.0;
+            block[i][j].y = -100.0;
+            scorenum++;
+        }
+    }
+    else if (velocity.y > 0 && moving_ball.x <= block[i][j].x + 75 && moving_ball.x >= block[i][j].x && moving_ball.y + ball_radius >= block[i][j].y - 27 && moving_ball.y < block[i][j].y) {
+        velocity.y *= -1;
+       if (mode == 3) {
+            block[i][j].hitCount++;
+            if (block[i][j].hitCount == 2) {
+                block[i][j].x = -100.0;
+                block[i][j].y = -100.0;
+                scorenum++;
+            }
+        }
+        else {
+            block[i][j].x = -100.0;
+            block[i][j].y = -100.0;
+            scorenum++;
+        }
+    }
+    else if (velocity.y < 0 && moving_ball.x <= block[i][j].x + 75 && moving_ball.x >= block[i][j].x && moving_ball.y - ball_radius <= block[i][j].y && moving_ball.y  > block[i][j].y) {
+        velocity.y *= -1;
+        if (mode == 3) {
+            block[i][j].hitCount++;
+            if (block[i][j].hitCount == 2) {
+                block[i][j].x = -100.0;
+                block[i][j].y = -100.0;
+                scorenum++;
+            }
+        }
+        else {
+            block[i][j].x = -100.0;
+            block[i][j].y = -100.0;
+            scorenum++;
+        }
+    }
+    if (mode == 3) {
+        if (velocity2.x > 0 && moving_ball.y <= block[i][j].y && moving_ball2.y >= block[i][j].y - 27 && moving_ball2.x + ball_radius >= block[i][j].x && moving_ball2.x < block[i][j].x) {
+            velocity2.x *= -1;
+            block[i][j].hitCount++;
+            if (block[i][j].hitCount == 2) {
+                block[i][j].x = -100.0;
+                block[i][j].y = -100.0;
+                scorenum++;
+            }
+        }
+        else if (velocity2.x < 0 && moving_ball2.y <= block[i][j].y && moving_ball2.y >= block[i][j].y - 27 && moving_ball2.x - ball_radius <= block[i][j].x + 75 && moving_ball2.x > block[i][j].x) {
+            velocity2.x *= -1;
+            block[i][j].hitCount++;
+            if (block[i][j].hitCount == 2) {
+                block[i][j].x = -100.0;
+                block[i][j].y = -100.0;
+                scorenum++;
+            }
+        }
+        else if (velocity2.y > 0 && moving_ball2.x <= block[i][j].x + 75 && moving_ball2.x >= block[i][j].x && moving_ball2.y + ball_radius >= block[i][j].y - 27 && moving_ball2.y < block[i][j].y) {
+            velocity2.y *= -1;
+            block[i][j].hitCount++;
+            if (block[i][j].hitCount == 2) {
+                block[i][j].x = -100.0;
+                block[i][j].y = -100.0;
+                scorenum++;
+            }
+        }
+        else if (velocity2.y < 0 && moving_ball2.x <= block[i][j].x + 75 && moving_ball2.x >= block[i][j].x && moving_ball2.y - ball_radius <= block[i][j].y && moving_ball2.y  > block[i][j].y) {
+            velocity2.y *= -1;
+            block[i][j].hitCount++;
+            if (block[i][j].hitCount == 2) {
+                block[i][j].x = -100.0;
+                block[i][j].y = -100.0;
+                scorenum++;
+            }
+        }
+    }
+}
+// 공 속도 증가하는 키보드 이벤트 함수
+void MyKey(unsigned char key, int x, int y) {
+    switch (key) {
+    case 'a':
+        velocity.x += 0.1;
+        velocity.y += 0.1;
+    }
+}
+// 바 좌우로 움직이는 키보드 이벤트 함수
+void SpecialKey(int key, int x, int y) {
+    switch (key) {
+    case GLUT_KEY_LEFT:
+        if (barleftX > 0 && barleftX < width) {
+            barmove -= barmovement_x;
+        }
+        break;
+    case GLUT_KEY_RIGHT:
+        if (barrightX > 0 && barrightX < width) {
+            barmove += barmovement_x;
+        }
+        break;
+    case GLUT_KEY_UP:
+        if (bartopY < height) {
+            barmove2 += barmovement_y;
+
+        }
+        break;
+    case GLUT_KEY_DOWN:
+        if (barbottomY > 0) {
+            barmove2 -= barmovement_y;
+        }
+        break;
+    }
+}
+
+void MyReshape(int w, int h) {
+    glViewport(0, 0, w, h);
+    glMatrixMode(GL_PROJECTION);
+    glLoadIdentity();
+    gluOrtho2D(left, left + width, bottom, bottom + height);
+
+}
+void Draw_hexagon(Point CC) {
+    float delta = 2 * PI / 6;
+    glBegin(GL_POLYGON);
+    glColor3f(1.0, 1.0, 1.0);
+    for (int i = 0; i < 6; i++) {
+        glVertex2f(CC.x + 400 * cos(delta * i), CC.y + 400 * sin(delta * i));
+    }
+    glEnd();
+}
+void gamescore() {
+    glColor3f(0.0, 0.0, 0.0);
+    char txt[] = "SCORE : ";
+    char num[100] = "!";
+    sprintf_s(num, "%d", scorenum*100);
+
+    glRasterPos3f((width / 2) - 50, (height / 2), 0);//픽셀 작업의 래스터 위치를 지정
+    for (int i = 0; i < strlen(txt); i++) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, txt[i]);
+    }
+    for (int i = 0; i < strlen(num); i++) {
+        glutBitmapCharacter(GLUT_BITMAP_HELVETICA_18, num[i]);
+    }
+   
+}
+void game1(){
+    if (game == 1) {
+        Draw_hexagon(Point{ width / 2, height / 2 });
+        Draw_circle(ball_radius, moving_ball);
+        if (mode == 3) {
+           Draw_circle2(ball_radius, moving_ball2);
+           moving_ball2.x += velocity2.x;
+           moving_ball2.y += velocity2.y;
+        }
+        Draw_bar();
+        Draw_block();
+        gamescore();
+        Check_Collision_Ball_Bar();
+
+        for (int i = 0; i < 3; i++) {
+            for (int j = 0; j < 10; j++) {
+                Check_Collision_Ball_Block(i, j);
+            }
+        }
+        Check_Collision_Ball_Wall();
+
+        moving_ball.x += velocity.x;
+        moving_ball.y += velocity.y;
+
+        if (scorenum == 24) {
+            Game_clear_page();
+        }
+    }
+}
+void RenderScene(void) {
+    glClear(GL_COLOR_BUFFER_BIT);
+
+    // 바탕색 설정 (하늘색)
+    glClearColor(0.529, 0.808, 0.922, 1.0);
+    Game_start_page();
+    game1();
+    glFlush();
+    glutSwapBuffers();
+}
+
+int main(int argc, char** argv) {
+    glutInit(&argc, argv);
+    glutInitDisplayMode(GLUT_DOUBLE | GLUT_RGBA);
+    glutInitWindowSize(width, height);
+    glutInitWindowPosition(0, 0);
+    glutCreateWindow("2019316박영웅 ");
+    glutMouseFunc(mouseClick);
+    init();
+    glutKeyboardFunc(MyKey);
+    glutSpecialFunc(SpecialKey);
+    glutDisplayFunc(RenderScene);
+    glutReshapeFunc(MyReshape);
+    glutIdleFunc(RenderScene);
+    glutMainLoop();
+}
